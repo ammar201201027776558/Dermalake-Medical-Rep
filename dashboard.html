@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .dashboard-card {
+      background: white;
+      padding: 30px 28px;
+      border-radius: 18px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+      width: 360px;
+      text-align: center;
+    }
+    .dashboard-card h1 {
+      margin: 0 0 20px;
+      font-size: 22px;
+      color: #222;
+    }
+    .control-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .control-group select {
+      flex: 1;
+      padding: 14px 16px;
+      border-radius: 40px;
+      border: 2px solid #111;
+      background: #eee;
+      color: #333;
+      font-size: 16px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 20px;
+      padding-right: 40px;
+    }
+    .control-group select:focus {
+      border-color: #0c9;
+      background-color: #fff;
+    }
+    .control-group button {
+      border: none;
+      background: #14c76b;
+      color: white;
+      padding: 14px 22px;
+      border-radius: 40px;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.16);
+      transition: transform 0.2s ease, background 0.2s ease;
+      white-space: nowrap;
+    }
+    .control-group button:hover {
+      background: #0da45c;
+      transform: translateY(-1px);
+    }
+    .message {
+      margin-top: 14px;
+      font-size: 15px;
+      color: #555;
+    }
+    .message.success {
+      color: #117a37;
+    }
+    .message.error {
+      color: #b00020;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-card">
+    <h1>User Dashboard</h1>
+    <div class="control-group">
+      <select id="statusSelect">
+        <option value="">Select status</option>
+        <option value="active">Start point</option>
+        <option value="inactive">Middle Point</option>
+        <option value="pending">End Point</option>
+      </select>
+      <button id="sendButton">Send</button>
+    </div>
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    const statusSelect = document.getElementById('statusSelect');
+    const sendButton = document.getElementById('sendButton');
+    const message = document.getElementById('message');
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = 'message ' + (type || '');
+    }
+
+    function getSubmissions() {
+      const stored = localStorage.getItem('userSubmissions');
+      return stored ? JSON.parse(stored) : [];
+    }
+
+    function saveSubmissions(submissions) {
+      localStorage.setItem('userSubmissions', JSON.stringify(submissions));
+    }
+
+    sendButton.addEventListener('click', () => {
+      const status = statusSelect.value;
+      const userCode = sessionStorage.getItem('userCode');
+      const userName = sessionStorage.getItem('userName');
+      
+      if (!status) {
+        showMessage('Please select a status.', 'error');
+        return;
+      }
+      
+      if (!userCode || !userName) {
+        showMessage('Error: User information not found.', 'error');
+        return;
+      }
+
+      const submissions = getSubmissions();
+      submissions.push({
+        code: userCode,
+        name: userName,
+        status: status,
+        timestamp: new Date().toLocaleString()
+      });
+      saveSubmissions(submissions);
+      
+      showMessage('Status ' + status + ' sent successfully!', 'success');
+      statusSelect.value = '';
+    });
+  </script>
+</body>
+</html>

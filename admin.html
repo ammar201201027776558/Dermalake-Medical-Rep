@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef6ff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .panel {
+      background: white;
+      padding: 32px 28px;
+      border-radius: 18px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+      width: 360px;
+      text-align: center;
+    }
+    .panel h1 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      color: #1f3d73;
+    }
+    .panel button {
+      border: none;
+      background: #2c7bf4;
+      color: white;
+      padding: 14px 24px;
+      border-radius: 35px;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .panel button:hover {
+      background: #225ec8;
+      transform: translateY(-1px);
+    }
+    .message {
+      margin-top: 16px;
+      font-size: 15px;
+      color: #323232;
+    }
+    .message.success {
+      color: #1b7c20;
+    }
+    .message.error {
+      color: #b02a2a;
+    }
+    .codes-list {
+      margin-top: 18px;
+      text-align: left;
+      font-size: 14px;
+      color: #444;
+      line-height: 1.6;
+    }
+    .section {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid #ddd;
+    }
+    .submissions-list {
+      margin-top: 14px;
+      text-align: left;
+      font-size: 13px;
+      color: #333;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #f9f9f9;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .submission-item {
+      padding: 8px;
+      margin-bottom: 8px;
+      background: white;
+      border-left: 3px solid #2c7bf4;
+      border-radius: 4px;
+    }
+    .submission-item strong {
+      color: #1f3d73;
+    }
+    .submission-time {
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Admin Panel</h1>
+    <button id="addCodeButton">Add User Code</button>
+    <div id="message" class="message"></div>
+    <div id="codesList" class="codes-list"></div>
+
+    <div class="section">
+      <h2 style="margin: 0 0 12px; font-size: 18px; color: #1f3d73;">User Submissions</h2>
+      <div id="submissionsList" class="submissions-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const adminCode = '10109';
+    const addCodeButton = document.getElementById('addCodeButton');
+    const message = document.getElementById('message');
+    const codesList = document.getElementById('codesList');
+    const submissionsList = document.getElementById('submissionsList');
+
+    function getUserCodes() {
+      const stored = localStorage.getItem('userCodes');
+      return stored ? JSON.parse(stored) : [];
+    }
+
+    function getSubmissions() {
+      const stored = localStorage.getItem('userSubmissions');
+      return stored ? JSON.parse(stored) : [];
+    }
+
+    function saveUserCodes(codes) {
+      localStorage.setItem('userCodes', JSON.stringify(codes));
+    }
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = 'message ' + (type || '');
+    }
+
+    function renderCodes() {
+      const codes = getUserCodes();
+      if (codes.length === 0) {
+        codesList.innerHTML = '<strong>No user codes added yet.</strong>';
+        return;
+      }
+      codesList.innerHTML = '<strong>User codes:</strong><br>' + codes.map(user => 
+        `${user.name} (${user.code})`
+      ).join('<br>');
+    }
+
+    function renderSubmissions() {
+      const submissions = getSubmissions();
+      if (submissions.length === 0) {
+        submissionsList.innerHTML = '<em>No submissions yet.</em>';
+        return;
+      }
+      submissionsList.innerHTML = submissions.map(sub => 
+        `<div class="submission-item">
+          <strong>${sub.name || sub.code}</strong><br>
+          Status: ${sub.status}<br>
+          <span class="submission-time">${sub.timestamp}</span>
+        </div>`
+      ).join('');
+    }
+
+    function validateUserCode(value) {
+      return /^\d{5}$/.test(value) && value !== adminCode;
+    }
+
+    addCodeButton.addEventListener('click', () => {
+      const code = prompt('Enter a new 5-digit user code:');
+      if (code === null) {
+        return;
+      }
+      const trimmedCode = code.trim();
+      if (!validateUserCode(trimmedCode)) {
+        showMessage('Code must be 5 digits and cannot be the admin code.', 'error');
+        return;
+      }
+      
+      const name = prompt('Enter a name for this user:');
+      if (name === null) {
+        return;
+      }
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        showMessage('Name cannot be empty.', 'error');
+        return;
+      }
+      
+      const codes = getUserCodes();
+      if (codes.some(user => user.code === trimmedCode)) {
+        showMessage('This code already exists.', 'error');
+        return;
+      }
+      
+      codes.push({ code: trimmedCode, name: trimmedName });
+      saveUserCodes(codes);
+      showMessage('User added successfully.', 'success');
+      renderCodes();
+    });
+
+    renderCodes();
+    renderSubmissions();
+  </script>
+</body>
+</html>

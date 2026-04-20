@@ -83,11 +83,48 @@
     .message.error {
       color: #b00020;
     }
+    .warning-box {
+      background: #fff4e5;
+      border: 1px solid #ffd7a6;
+      color: #8a5b22;
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      text-align: left;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .warning-time {
+      display: block;
+      margin-top: 8px;
+      color: #7a5d2c;
+      font-size: 12px;
+    }
+    .back-button {
+      position: fixed;
+      left: 18px;
+      top: 18px;
+      border: none;
+      background: #444;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 28px;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.14);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .back-button:hover {
+      background: #222;
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
+  <button class="back-button" onclick="history.back()">Back</button>
   <div class="dashboard-card">
     <h1>User Dashboard</h1>
+    <div id="warningBox" class="warning-box"></div>
     <div class="control-group">
       <select id="statusSelect">
         <option value="">Select status</option>
@@ -104,6 +141,7 @@
     const statusSelect = document.getElementById('statusSelect');
     const sendButton = document.getElementById('sendButton');
     const message = document.getElementById('message');
+    const warningBox = document.getElementById('warningBox');
 
     function showMessage(text, type) {
       message.textContent = text;
@@ -115,8 +153,28 @@
       return stored ? JSON.parse(stored) : [];
     }
 
+    function getWarnings() {
+      const stored = localStorage.getItem('userWarnings');
+      return stored ? JSON.parse(stored) : [];
+    }
+
     function saveSubmissions(submissions) {
       localStorage.setItem('userSubmissions', JSON.stringify(submissions));
+    }
+
+    function renderWarning() {
+      const userCode = sessionStorage.getItem('userCode');
+      if (!userCode) {
+        warningBox.innerHTML = '';
+        return;
+      }
+      const warnings = getWarnings().filter(w => w.code === userCode);
+      if (warnings.length === 0) {
+        warningBox.innerHTML = '';
+        return;
+      }
+      const latest = warnings[warnings.length - 1];
+      warningBox.innerHTML = `Warning: ${latest.message} <span class="warning-time">${latest.timestamp}</span>`;
     }
 
     sendButton.addEventListener('click', () => {
@@ -134,18 +192,51 @@
         return;
       }
 
-      const submissions = getSubmissions();
-      submissions.push({
-        code: userCode,
-        name: userName,
-        status: status,
-        timestamp: new Date().toLocaleString()
-      });
-      saveSubmissions(submissions);
-      
-      showMessage('Status ' + status + ' sent successfully!', 'success');
-      statusSelect.value = '';
+      const statusLabel = statusSelect.options[statusSelect.selectedIndex].text;
+      function saveSubmission(location) {
+        const submissions = getSubmissions();
+        submissions.push({
+          code: userCode,
+          name: userName,
+          status: status,
+          statusLabel: statusLabel,
+          timestamp: new Date().toLocaleString(),
+          location: location || null
+        });
+        saveSubmissions(submissions);
+        showMessage('Status ' + statusLabel + ' sent successfully!', 'success');
+        statusSelect.value = '';
+        renderWarning();
+      }
+
+      if (status === 'active') {
+        if (!navigator.geolocation) {
+          showMessage('Geolocation is not supported by your browser.', 'error');
+          return;
+        }
+        showMessage('Requesting location...', 'success');
+        navigator.geolocation.getCurrentPosition(
+          position => {
+            saveSubmission({
+              lat: position.coords.latitude.toFixed(6),
+              lng: position.coords.longitude.toFixed(6)
+            });
+          },
+          () => {
+            showMessage('Location permission denied or unavailable.', 'error');
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+          }
+        );
+      } else {
+        saveSubmission(null);
+      }
     });
+
+    renderWarning();
   </script>
 </body>
 </html>

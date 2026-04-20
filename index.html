@@ -75,9 +75,28 @@
     .message.error {
       color: #b00020;
     }
+    .back-button {
+      position: fixed;
+      left: 18px;
+      top: 18px;
+      border: none;
+      background: #444;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 28px;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.14);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .back-button:hover {
+      background: #222;
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
+  <button class="back-button" onclick="history.back()">Back</button>
   <div class="login-card">
     <h1>Enter your 5-digit code</h1>
     <div class="input-group">

@@ -53,12 +53,90 @@
     .message.error {
       color: #b02a2a;
     }
+    .back-button {
+      position: fixed;
+      left: 18px;
+      top: 18px;
+      border: none;
+      background: #444;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 28px;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.14);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .back-button:hover {
+      background: #222;
+      transform: translateY(-1px);
+    }
     .codes-list {
       margin-top: 18px;
       text-align: left;
       font-size: 14px;
       color: #444;
       line-height: 1.6;
+    }
+    .user-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #f7f9ff;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      border: 1px solid #dfe7ff;
+    }
+    .user-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+    .user-action-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 34px;
+      background: white;
+      border: 1px solid #dfe7ff;
+      border-radius: 12px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+      z-index: 10;
+      overflow: hidden;
+      min-width: 140px;
+    }
+    .user-action-menu.show {
+      display: block;
+    }
+    .user-action-menu button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 14px;
+      border: none;
+      background: transparent;
+      color: #333;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .user-action-menu button:hover {
+      background: #eef2ff;
+    }
+    .user-dot-button {
+      border: none;
+      background: transparent;
+      color: #1f3d73;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 8px;
+      border-radius: 50%;
+      transition: background 0.2s ease;
+    }
+    .user-dot-button:hover {
+      background: rgba(31, 61, 115, 0.1);
     }
     .section {
       margin-top: 22px;
@@ -93,6 +171,7 @@
   </style>
 </head>
 <body>
+  <button class="back-button" onclick="history.back()">Back</button>
   <div class="panel">
     <h1>Admin Panel</h1>
     <button id="addCodeButton">Add User Code</button>
@@ -103,6 +182,11 @@
       <h2 style="margin: 0 0 12px; font-size: 18px; color: #1f3d73;">User Submissions</h2>
       <div id="submissionsList" class="submissions-list"></div>
     </div>
+
+    <div class="section">
+      <h2 style="margin: 0 0 12px; font-size: 18px; color: #1f3d73;">Sent Warnings</h2>
+      <div id="warningsList" class="submissions-list"></div>
+    </div>
   </div>
 
   <script>
@@ -111,6 +195,7 @@
     const message = document.getElementById('message');
     const codesList = document.getElementById('codesList');
     const submissionsList = document.getElementById('submissionsList');
+    const warningsList = document.getElementById('warningsList');
 
     function getUserCodes() {
       const stored = localStorage.getItem('userCodes');
@@ -122,8 +207,17 @@
       return stored ? JSON.parse(stored) : [];
     }
 
+    function getWarnings() {
+      const stored = localStorage.getItem('userWarnings');
+      return stored ? JSON.parse(stored) : [];
+    }
+
     function saveUserCodes(codes) {
       localStorage.setItem('userCodes', JSON.stringify(codes));
+    }
+
+    function saveWarnings(warnings) {
+      localStorage.setItem('userWarnings', JSON.stringify(warnings));
     }
 
     function showMessage(text, type) {
@@ -137,9 +231,33 @@
         codesList.innerHTML = '<strong>No user codes added yet.</strong>';
         return;
       }
-      codesList.innerHTML = '<strong>User codes:</strong><br>' + codes.map(user => 
-        `${user.name} (${user.code})`
-      ).join('<br>');
+      codesList.innerHTML = '<strong>User codes:</strong>' + codes.map(user => 
+        `<div class="user-row">
+          <span>${user.name} (${user.code})</span>
+          <div class="user-actions">
+            <button class="user-dot-button" data-code="${user.code}" title="Actions">⋮</button>
+            <div class="user-action-menu" data-code="${user.code}">
+              <button class="user-action delete" data-code="${user.code}">Delete</button>
+              <button class="user-action warn" data-code="${user.code}">Send warning</button>
+            </div>
+          </div>
+        </div>`
+      ).join('');
+    }
+
+    function renderWarnings() {
+      const warnings = getWarnings();
+      if (warnings.length === 0) {
+        warningsList.innerHTML = '<em>No warnings sent yet.</em>';
+        return;
+      }
+      warningsList.innerHTML = warnings.map(warning =>
+        `<div class="submission-item">
+          <strong>${warning.name} (${warning.code})</strong><br>
+          Warning: ${warning.message}<br>
+          <span class="submission-time">${warning.timestamp}</span>
+        </div>`
+      ).join('');
     }
 
     function renderSubmissions() {
@@ -148,13 +266,23 @@
         submissionsList.innerHTML = '<em>No submissions yet.</em>';
         return;
       }
-      submissionsList.innerHTML = submissions.map(sub => 
-        `<div class="submission-item">
+      const statusNames = {
+        active: 'Start point',
+        inactive: 'Middle Point',
+        pending: 'End Point'
+      };
+      submissionsList.innerHTML = submissions.map(sub => {
+        const locationText = sub.location
+          ? `Location: ${sub.location.lat}, ${sub.location.lng}<br>`
+          : '';
+        const statusText = sub.statusLabel || statusNames[sub.status] || sub.status;
+        return `<div class="submission-item">
           <strong>${sub.name || sub.code}</strong><br>
-          Status: ${sub.status}<br>
+          Status: ${statusText}<br>
+          ${locationText}
           <span class="submission-time">${sub.timestamp}</span>
-        </div>`
-      ).join('');
+        </div>`;
+      }).join('');
     }
 
     function validateUserCode(value) {
@@ -194,8 +322,69 @@
       renderCodes();
     });
 
+    codesList.addEventListener('click', event => {
+      const dotButton = event.target.closest('.user-dot-button');
+      if (dotButton) {
+        const code = dotButton.dataset.code;
+        const menu = codesList.querySelector(`.user-action-menu[data-code="${code}"]`);
+        if (menu) {
+          document.querySelectorAll('.user-action-menu.show').forEach(openMenu => {
+            if (openMenu !== menu) {
+              openMenu.classList.remove('show');
+            }
+          });
+          menu.classList.toggle('show');
+        }
+        return;
+      }
+
+      const actionButton = event.target.closest('.user-action');
+      if (!actionButton) {
+        return;
+      }
+
+      const code = actionButton.dataset.code;
+      const codes = getUserCodes();
+      const user = codes.find(u => u.code === code);
+      if (!user) {
+        showMessage('User not found.', 'error');
+        return;
+      }
+
+      if (actionButton.classList.contains('delete')) {
+        if (!confirm(`Delete ${user.name} (${user.code})?`)) {
+          return;
+        }
+        const remaining = codes.filter(u => u.code !== code);
+        saveUserCodes(remaining);
+        showMessage(`${user.name} deleted successfully.`, 'success');
+        renderCodes();
+      } else if (actionButton.classList.contains('warn')) {
+        const warningText = prompt(`Enter a warning message for ${user.name}:`);
+        if (warningText === null) {
+          return;
+        }
+        const trimmedWarning = warningText.trim();
+        if (!trimmedWarning) {
+          showMessage('Warning cannot be empty.', 'error');
+          return;
+        }
+        const warnings = getWarnings();
+        warnings.push({
+          code: user.code,
+          name: user.name,
+          message: trimmedWarning,
+          timestamp: new Date().toLocaleString()
+        });
+        saveWarnings(warnings);
+        showMessage(`Warning sent to ${user.name}.`, 'success');
+        renderWarnings();
+      }
+    });
+
     renderCodes();
     renderSubmissions();
+    renderWarnings();
   </script>
 </body>
 </html>

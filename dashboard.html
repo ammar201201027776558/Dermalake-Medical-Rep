@@ -138,6 +138,9 @@
   </div>
 
   <script>
+    let liveWatchId = null;
+    let latestLiveLocation = null;
+
     const statusSelect = document.getElementById('statusSelect');
     const sendButton = document.getElementById('sendButton');
     const message = document.getElementById('message');
@@ -177,6 +180,53 @@
       warningBox.innerHTML = `Warning: ${latest.message} <span class="warning-time">${latest.timestamp}</span>`;
     }
 
+    // Start live location tracking
+    function startLiveLocation() {
+      if (!navigator.geolocation) {
+        showMessage('Geolocation is not supported by your browser.', 'error');
+        return;
+      }
+      if (liveWatchId !== null) {
+        return; // already watching
+      }
+      showMessage('Live location tracking started.', 'success');
+      liveWatchId = navigator.geolocation.watchPosition(
+        position => {
+          latestLiveLocation = {
+            lat: position.coords.latitude.toFixed(6),
+            lng: position.coords.longitude.toFixed(6)
+          };
+        },
+        () => {
+          showMessage('Unable to get live location.', 'error');
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 20000
+        }
+      );
+    }
+
+    // Stop live location tracking
+    function stopLiveLocation() {
+      if (liveWatchId !== null) {
+        navigator.geolocation.clearWatch(liveWatchId);
+        liveWatchId = null;
+        showMessage('Live location tracking stopped.', 'success');
+      }
+    }
+
+    // Listen for status changes to start/stop live location
+    statusSelect.addEventListener('change', () => {
+      const status = statusSelect.value;
+      if (status === 'active') {
+        startLiveLocation();
+      } else if (status === 'pending') {
+        stopLiveLocation();
+      }
+    });
+
     sendButton.addEventListener('click', () => {
       const status = statusSelect.value;
       const userCode = sessionStorage.getItem('userCode');
@@ -210,28 +260,24 @@
       }
 
       if (status === 'active') {
-        if (!navigator.geolocation) {
-          showMessage('Geolocation is not supported by your browser.', 'error');
-          return;
+        // Start point: just start live tracking, don't submit yet
+        if (liveWatchId === null) {
+          startLiveLocation();
         }
-        showMessage('Requesting location...', 'success');
-        navigator.geolocation.getCurrentPosition(
-          position => {
-            saveSubmission({
-              lat: position.coords.latitude.toFixed(6),
-              lng: position.coords.longitude.toFixed(6)
-            });
-          },
-          () => {
-            showMessage('Location permission denied or unavailable.', 'error');
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
-          }
-        );
+        showMessage('Live location tracking started. You can now move.', 'success');
+        return;
+      } else if (status === 'pending') {
+        // End Point: stop tracking and submit last location
+        stopLiveLocation();
+        if (latestLiveLocation) {
+          saveSubmission(latestLiveLocation);
+        } else {
+          showMessage('No live location to submit.', 'error');
+        }
+        latestLiveLocation = null;
+        return;
       } else {
+        // Middle Point or other: submit without location
         saveSubmission(null);
       }
     });
